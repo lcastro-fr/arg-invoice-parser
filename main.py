@@ -1,8 +1,8 @@
 import pdfplumber
 from parsers import AIParser, RegexParser, QRParser
 from pprint import pprint
-
-PDF_PATH = "./facturas/factura_19.pdf"
+import logging
+from pathlib import Path
 
 
 def extract_text_from_pdf(pdf_path):
@@ -14,18 +14,43 @@ def extract_text_from_pdf(pdf_path):
     return text if len(text.strip()) > 50 else None
 
 
-if __name__ == "__main__":
-    raw_text = extract_text_from_pdf(PDF_PATH)
-    print("Extracted Text: ", raw_text)
+def logging_config():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    return logging.getLogger()
+
+
+def main():
+    logger = logging_config()
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Invoice Parser")
+    parser.add_argument(
+        "--pdf", type=str, required=True, help="Path to the PDF invoice"
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
+    if not Path(args.pdf).is_file():
+        logger.error(f"File not found: {args.pdf}")
+        exit(1)
+
+    raw_text = extract_text_from_pdf(args.pdf)
 
     if not raw_text:
-        print("No text extracted from PDF.")
+        logger.error("No text extracted from PDF.")
         exit(1)
 
     regex_parser = RegexParser(raw_text)
 
     # Primero intento con QR
-    qr_parser = QRParser(PDF_PATH)
+    qr_parser = QRParser(args.pdf)
     qr_data = qr_parser.extract_and_parse()
     if qr_data:
         # El importe neto no viene en el qr
@@ -55,3 +80,7 @@ if __name__ == "__main__":
         # ai_data = ai_parser.parse()
         # print("Data extracted with AI:")
         # print(ai_data)
+
+
+if __name__ == "__main__":
+    main()

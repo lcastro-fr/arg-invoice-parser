@@ -1,4 +1,5 @@
 import ollama
+import logging
 
 TEXT_MODEL = "qwen2.5"
 
@@ -41,6 +42,8 @@ Extract these fields from the text below. If a field is not found, return null.
 Output ONLY the valid JSON object. Do not explain your reasoning.
 """
 
+logger = logging.getLogger(__name__)
+
 
 class AIParser:
     def __init__(
@@ -58,16 +61,20 @@ class AIParser:
         self.client_args = client_args
 
     def parse(self):
-        client = ollama.Client(host=self.host, **self.client_args)
-        response = client.chat(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": PROMPT_TEMPLATE.format(raw_text=self.text_content),
-                }
-            ],
-            format="json",
-            **self.chat_args,
-        )
-        return response["message"]["content"]
+        try:
+            client = ollama.Client(host=self.host, **self.client_args)
+            response = client.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": PROMPT_TEMPLATE.format(raw_text=self.text_content),
+                    }
+                ],
+                format="json",
+                **self.chat_args,
+            )
+            return response["message"]["content"]
+        except Exception as e:
+            logger.error(f"Error during AI parsing: {e}")
+            return

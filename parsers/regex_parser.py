@@ -1,6 +1,9 @@
 import re
 from datetime import datetime
 import statistics
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RegexParser:
@@ -159,33 +162,51 @@ class RegexParser:
             "cuit": None,
             "importe_bruto": None,
             "importe_neto": None,
-            "moneda": "ARS",  # Hardcodeado por ahora
+            "moneda": "ARS",  # TODO Detectar moneda. Hardcodeado por ahora
             "tipoCmp": None,  # Código numérico (006, 011)
             "letra": None,  # Letra (A, B, C)
             "orden_compra": None,
         }
 
-        # 1. REFERENCIA (formato 0000-00000000)
-        data["referencia"] = self._extract_referencia()
+        try:
+            # 1. REFERENCIA (formato 0000-00000000)
+            data["referencia"] = self._extract_referencia()
+        except Exception as e:
+            logger.error(f"Error extracting referencia: {e}")
 
-        # 2. FECHA (dd/mm/yyyy o dd-mm-yy)
-        data["fecha"] = self._extract_fecha()
+        try:
+            # 2. FECHA (dd/mm/yyyy o dd-mm-yy)
+            data["fecha"] = self._extract_fecha()
+        except Exception as e:
+            logger.error(f"Error extracting fecha: {e}")
 
-        # 3. CUIT (XX-XXXXXXXX-X o XXXXXXXXXXX)
-        data["cuit"] = self._extract_cuit()
+        try:
+            # 3. CUIT (XX-XXXXXXXX-X o XXXXXXXXXXX)
+            data["cuit"] = self._extract_cuit()
+        except Exception as e:
+            logger.error(f"Error extracting cuit: {e}")
 
-        # 4 & 5. IMPORTES (Bruto y Neto)
-        importes = self.extract_importes()
-        data["importe_bruto"] = importes["importe_bruto"]
-        data["importe_neto"] = importes["importe_neto"]
-        data["debug"] = importes.get("debug", {})
+        try:
+            # 4 & 5. IMPORTES (Bruto y Neto)
+            importes = self.extract_importes()
+            data["importe_bruto"] = importes["importe_bruto"]
+            data["importe_neto"] = importes["importe_neto"]
+            data["debug"] = importes.get("debug", {})
+        except Exception as e:
+            logger.error(f"Error extracting importes: {e}")
 
-        # 6 & 7. ENCABEZADO (Primeras 5 líneas)
-        data["tipoCmp"] = self._extract_tipo_cmp()
-        data["letra"] = self.extract_letra()
+        try:
+            # 6 & 7. ENCABEZADO (Primeras 5 líneas)
+            data["tipoCmp"] = self._extract_tipo_cmp()
+            data["letra"] = self.extract_letra()
+        except Exception as e:
+            logger.error(f"Error extracting tipoCmp/letra: {e}")
 
-        # 8. ORDEN DE COMPRA
-        data["orden_compra"] = self.extract_oc()
+        try:
+            # 8. ORDEN DE COMPRA
+            data["orden_compra"] = self.extract_oc()
+        except Exception as e:
+            logger.error(f"Error extracting orden_compra: {e}")
 
         return data
 

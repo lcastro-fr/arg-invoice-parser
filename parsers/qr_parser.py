@@ -5,6 +5,9 @@ import fitz
 from PIL import Image
 from pyzbar.pyzbar import decode
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class QRParser:
@@ -39,7 +42,8 @@ class QRParser:
                     "importe_bruto": data.get("importe"),
                 }
         except Exception as e:
-            return None
+            logger.error(f"Error decoding AFIP QR: {e}")
+            return
 
     def extract_and_parse(self):
         """
@@ -49,7 +53,11 @@ class QRParser:
             doc = fitz.open(self.pdf_path)
             if not doc:
                 return
+        except Exception as e:
+            logger.error(f"Error opening PDF: {e}")
+            return
 
+        try:
             for page_num in range(len(doc)):
                 images = doc[page_num].get_images(full=True)
 
@@ -72,6 +80,6 @@ class QRParser:
                             afip_data = self._decode_afip_qr(qr_data)
                             if afip_data:
                                 return afip_data
-
         except Exception as e:
-            return None
+            logger.error(f"Error extracting QR codes: {e}")
+            return
