@@ -50,7 +50,7 @@ class RegexParser:
         ref_matches = re.findall(ref_regex, header_text)
         if ref_matches:
             return ref_matches[0].replace(" ", "")
-        
+
         # Probams buscando pto de venta y numero por separado
         pto_venta_regex = r"(?<![.\d/-])\d{4,5}(?![.\d/-])"
         numero_regex = r"(?<![.\d/-])\d{8}(?![.\d/-])"
@@ -58,7 +58,7 @@ class RegexParser:
         numero_matches = re.findall(numero_regex, header_text)
         if pto_venta_matches and numero_matches:
             return f"{pto_venta_matches[0]}-{numero_matches[0]}"
-        
+
         return None
 
     def _extract_fecha(self) -> str | None:
@@ -79,10 +79,12 @@ class RegexParser:
 
     def _extract_cuit(self) -> str | None:
         cuit_regex = r"\b(?:20|23|27|30|33)(?:-?\d{8}-?\d)\b"
-        cuit_matches = [c.replace("-", "") for c in re.findall(cuit_regex, self.text)]
-        cuit_matches = [c for c in cuit_matches if c != self.CUIT_FR]
-        if cuit_matches:
-            return cuit_matches[0]
+        for line in self.lines:
+            matches = re.findall(cuit_regex, line)
+            for match in matches:
+                cuit = match.replace("-", "")
+                if cuit != self.CUIT_FR:
+                    return cuit
         return None
 
     def extract_importes(self) -> ImportesResult:
@@ -113,7 +115,11 @@ class RegexParser:
                 continue
 
         # Eliminados duplicados y ordenamos
-        unique_amounts = sorted(list(set(found_amounts)), reverse=True)
+        unique_amounts = []
+        for amt in sorted(found_amounts, reverse=True):
+            # Verificar si el monto está muy cerca de alguno ya agregado. A veces los duplican con un decimal de diferencia
+            if not any(abs(existing - amt) < 1 for existing in unique_amounts):
+                unique_amounts.append(amt)
 
         debug_info = ImportesDebugInfo(candidatos_encontrados=unique_amounts[:5])
         result = ImportesResult(debug=debug_info)
@@ -154,19 +160,25 @@ class RegexParser:
             tmp = int(num)
             if tmp <= 9:
                 return tmp
-            
+
             if tmp <= 99:
                 if 10 <= tmp <= 66 or tmp in (81, 82, 83, 88, 89, 90, 91, 99):
                     return tmp
 
             if tmp <= 999:
-                if 101 <= tmp <= 117 or 201 <= tmp <= 213 or tmp in (331, 332) or 991 <= tmp <= 998: 
+                if (
+                    101 <= tmp <= 117
+                    or tmp in (183, 186, 190)  # Especificos de hacienda
+                    or 201 <= tmp <= 213
+                    or tmp in (331, 332)
+                    or 991 <= tmp <= 998
+                ):
                     return tmp
         return None
 
     def extract_letra(self):
         header_text = " ".join(self.lines[:10])
-        letter_regex = r"\b[ABCEM]\b"
+        letter_regex = r"\b(?<![.\d/-])[ABCEM](?![.\d/-])\b"
         letter_matches = re.findall(letter_regex, header_text)
 
         for letra in letter_matches:
