@@ -6,6 +6,7 @@ from PIL import Image
 from pyzbar.pyzbar import decode
 import io
 import logging
+from dtos.models import InvoiceData
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,9 @@ logger = logging.getLogger(__name__)
 class QRParser:
     def __init__(self, pdf_path):
         self.pdf_path = pdf_path
+        self.invoice_data = InvoiceData()
 
-    def _decode_afip_qr(self, url):
+    def _decode_afip_qr(self, url) -> dict | None:
         try:
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
@@ -31,31 +33,31 @@ class QRParser:
 
                 return {
                     "fecha": data.get("fecha"),
-                    "cuit": data.get("cuit"),
+                    "cuit": str(data.get("cuit")),
                     "referencia": referencia,
                     "importe_neto": None,
                     "moneda": moneda,
-                    "tipoCmp": int(data.get("tipoCmp"))
+                    "tipo_cmp": int(data.get("tipoCmp"))
                     if data.get("tipoCmp")
                     else None,
-                    "tipoCodAut": data.get("tipoCodAut"),
+                    "letra": data.get("tipoCodAut"),
                     "importe_bruto": data.get("importe"),
                 }
         except Exception as e:
             logger.error(f"Error decoding AFIP QR: {e}")
-            return
+            return None
 
-    def extract_and_parse(self):
+    def extract_and_parse(self) -> InvoiceData | None:
         """
         Look for QR code.
         """
         try:
             doc = fitz.open(self.pdf_path)
             if not doc:
-                return
+                return None
         except Exception as e:
             logger.error(f"Error opening PDF: {e}")
-            return
+            return None
 
         try:
             for page_num in range(len(doc)):
@@ -79,7 +81,9 @@ class QRParser:
                         if "arca.gob.ar" in qr_data or "afip.gob.ar" in qr_data:
                             afip_data = self._decode_afip_qr(qr_data)
                             if afip_data:
-                                return afip_data
+                                return InvoiceData(
+                                    **afip_data, qr_decoded=True
+                                )
         except Exception as e:
             logger.error(f"Error extracting QR codes: {e}")
-            return
+            return None

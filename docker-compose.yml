@@ -1,0 +1,11 @@
+name: arg-invoice-parser
+
+services:
+  invoice-parser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arg-invoice-parser
+    volumes:
+      - ./facturas:/app/invoices:ro
+      - ./output:/app/output

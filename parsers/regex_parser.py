@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 import statistics
 import logging
+from dtos.models import InvoiceData, ImportesResult, ImportesDebugInfo
 
 logger = logging.getLogger(__name__)
 
@@ -9,20 +10,21 @@ logger = logging.getLogger(__name__)
 class RegexParser:
     """
     Consideraciones:
-    - Referencia: formato 0000-00000000
-    - Fecha: dd/mm/yyyy o dd-mm-yy. Es la primera que aparece en el doc
-    - CUIT: XX-XXXXXXXX-X o XXXXXXXXXXX (11 dígitos)
+    - Referencia: formato 0000-00000000 o pto_venta - numero en el header (primeras 10 filas)
+    - Fecha: dd/mm/yyyy,dd-mm-yy, dd.mm.yyyy, etc. Es la primera que aparece en el doc
+    - CUIT: XX-XXXXXXXX-X o XXXXXXXXXXX <> CUIT_FR (11 dígitos)
     - Importe Bruto: el mayor de los importes encontrados
     - Importe Neto: el inmediatamente inferior al bruto
     - Moneda: por ahora siempre ARS
-    - TipoCmp: código numérico (006, 011) en el encabezado (primeras 5 filas)
-    - Letra: A, B, C en el encabezado (primeras 5 filas)
+    - TipoCmp: código numérico (006, 011, etc.) en el encabezado (primeras 10 filas). Vali rangos AFIP
+    - Letra: A, B, C en el encabezado (primeras 10 filas)
     """
 
     CUIT_FR = "30540080298"
 
     def __init__(self, raw_text):
         self.text = raw_text
+        self.invoice_data = InvoiceData()
         self.lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
 
     def _parse_arg_float(self, num_str):
@@ -41,26 +43,41 @@ class RegexParser:
         except ValueError:
             return 0.0
 
-    def _extract_referencia(self):
+    def _extract_referencia(self) -> str | None:
+        # Deberia aparecer en el header
         ref_regex = r"\b\d{4,5}\s?-\s?\d{8}\b"
-        ref_matches = re.findall(ref_regex, self.text)
+        header_text = " ".join(self.lines[:10])
+        ref_matches = re.findall(ref_regex, header_text)
         if ref_matches:
             return ref_matches[0].replace(" ", "")
+        
+        # Probams buscando pto de venta y numero por separado
+        pto_venta_regex = r"(?<![.\d/-])\d{4,5}(?![.\d/-])"
+        numero_regex = r"(?<![.\d/-])\d{8}(?![.\d/-])"
+        pto_venta_matches = re.findall(pto_venta_regex, header_text)
+        numero_matches = re.findall(numero_regex, header_text)
+        if pto_venta_matches and numero_matches:
+            return f"{pto_venta_matches[0]}-{numero_matches[0]}"
+        
         return None
 
-    def _extract_fecha(self):
-        date_regex = r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b"
+    def _extract_fecha(self) -> str | None:
+        date_regex = r"\b(\d{1,2}[\\/.-]\d{1,2}[\\/.-]\d{2,4})\b"
         date_matches = re.findall(date_regex, self.text)
         if date_matches:
             # La fecha de emisión es la primera del documento
             try:
-                date_str = date_matches[0].replace("-", "/")
-                dt_obj = datetime.strptime(date_str, "%d/%m/%Y")
+                date_str = date_matches[0].replace("-", "/").replace(".", "/")
+                split_dates = date_str.split("/")
+                day, month, year = split_dates
+                if len(year) == 2:
+                    year = "20" + year
+                dt_obj = datetime(int(year), int(month), int(day))
                 return dt_obj.strftime("%Y-%m-%d")
             except Exception:
                 return date_matches[0]  # Fallback si falla el parseo
 
-    def _extract_cuit(self):
+    def _extract_cuit(self) -> str | None:
         cuit_regex = r"\b(?:20|23|27|30|33)(?:-?\d{8}-?\d)\b"
         cuit_matches = [c.replace("-", "") for c in re.findall(cuit_regex, self.text)]
         cuit_matches = [c for c in cuit_matches if c != self.CUIT_FR]
@@ -68,7 +85,7 @@ class RegexParser:
             return cuit_matches[0]
         return None
 
-    def extract_importes(self):
+    def extract_importes(self) -> ImportesResult:
         """Extrae importes con coma y punto como separador.
         - El importe bruto deberia ser el mas grande de todos.
         - El importe neto deberia ser el inmediamente inferior al bruto.
@@ -97,14 +114,12 @@ class RegexParser:
 
         # Eliminados duplicados y ordenamos
         unique_amounts = sorted(list(set(found_amounts)), reverse=True)
-        results = {
-            "importe_bruto": None,
-            "importe_neto": None,
-            "debug": {"candidatos_encontrados": unique_amounts[:5]},  # Debug
-        }
+
+        debug_info = ImportesDebugInfo(candidatos_encontrados=unique_amounts[:5])
+        result = ImportesResult(debug=debug_info)
 
         if not unique_amounts:
-            return results
+            return result
 
         if len(unique_amounts) > 3:
             # Calculamos la mediana para descargar importes muy dispersos
@@ -117,30 +132,40 @@ class RegexParser:
                 if (median * lower) <= amt <= (median * upper)
             ]
             unique_amounts = sorted(filtered_amounts, reverse=True)
-            results["debug"]["median"] = median  # Debug
-            results["debug"]["filtered_candidatos"] = unique_amounts
+            result.debug.median = median
+            result.debug.filtered_candidatos = unique_amounts
 
-        results["importe_bruto"] = unique_amounts[0]  # El mayor es el bruto
+        result.importe_bruto = unique_amounts[0]  # El mayor es el bruto
 
         if len(unique_amounts) > 1:
-            results["importe_neto"] = unique_amounts[1]
+            result.importe_neto = unique_amounts[1]
         else:
-            results["importe_neto"] = unique_amounts[0]
+            result.importe_neto = unique_amounts[0]
 
-        return results
+        return result
 
     def _extract_tipo_cmp(self):
-        header_text = " ".join(self.lines[:5])
-        cod_regex = r"\b\d{1,3}\b"
+        header_text = " ".join(self.lines[:10])
+        cod_regex = r"(?<![.\d/-])\d{1,3}(?![.\d/-])"
         cod_matches = re.findall(cod_regex, header_text)
 
+        # Verificamos rangos validos de afip
         for num in cod_matches:
-            if len(num) == 3 or (len(num) == 2 and num.startswith("0")):
-                return int(num)
+            tmp = int(num)
+            if tmp <= 9:
+                return tmp
+            
+            if tmp <= 99:
+                if 10 <= tmp <= 66 or tmp in (81, 82, 83, 88, 89, 90, 91, 99):
+                    return tmp
+
+            if tmp <= 999:
+                if 101 <= tmp <= 117 or 201 <= tmp <= 213 or tmp in (331, 332) or 991 <= tmp <= 998: 
+                    return tmp
         return None
 
     def extract_letra(self):
-        header_text = " ".join(self.lines[:5])
+        header_text = " ".join(self.lines[:10])
         letter_regex = r"\b[ABCEM]\b"
         letter_matches = re.findall(letter_regex, header_text)
 
@@ -155,60 +180,48 @@ class RegexParser:
             return oc_matches[0]
         return None
 
-    def extract_data(self):
-        data = {
-            "referencia": None,
-            "fecha": None,
-            "cuit": None,
-            "importe_bruto": None,
-            "importe_neto": None,
-            "moneda": "ARS",  # TODO Detectar moneda. Hardcodeado por ahora
-            "tipoCmp": None,  # Código numérico (006, 011)
-            "letra": None,  # Letra (A, B, C)
-            "orden_compra": None,
-        }
-
+    def extract_data(self) -> InvoiceData:
         try:
             # 1. REFERENCIA (formato 0000-00000000)
-            data["referencia"] = self._extract_referencia()
+            self.invoice_data.referencia = self._extract_referencia()
         except Exception as e:
-            logger.error(f"Error extracting referencia: {e}")
+            logger.error(f"Error obteniendo referencia: {e}")
 
         try:
             # 2. FECHA (dd/mm/yyyy o dd-mm-yy)
-            data["fecha"] = self._extract_fecha()
+            self.invoice_data.fecha = self._extract_fecha()
         except Exception as e:
-            logger.error(f"Error extracting fecha: {e}")
+            logger.error(f"Error obteniendo fecha: {e}")
 
         try:
             # 3. CUIT (XX-XXXXXXXX-X o XXXXXXXXXXX)
-            data["cuit"] = self._extract_cuit()
+            self.invoice_data.cuit = self._extract_cuit()
         except Exception as e:
-            logger.error(f"Error extracting cuit: {e}")
+            logger.error(f"Error obteniendo cuit: {e}")
 
         try:
             # 4 & 5. IMPORTES (Bruto y Neto)
             importes = self.extract_importes()
-            data["importe_bruto"] = importes["importe_bruto"]
-            data["importe_neto"] = importes["importe_neto"]
-            data["debug"] = importes.get("debug", {})
+            self.invoice_data.importe_bruto = importes.importe_bruto
+            self.invoice_data.importe_neto = importes.importe_neto
         except Exception as e:
-            logger.error(f"Error extracting importes: {e}")
+            logger.error(f"Error obteniendo importes: {e}")
 
         try:
             # 6 & 7. ENCABEZADO (Primeras 5 líneas)
-            data["tipoCmp"] = self._extract_tipo_cmp()
-            data["letra"] = self.extract_letra()
+            self.invoice_data.tipo_cmp = self._extract_tipo_cmp()
+            self.invoice_data.letra = self.extract_letra()
         except Exception as e:
-            logger.error(f"Error extracting tipoCmp/letra: {e}")
+            logger.error(f"Error obteniendo tipoCmp/letra: {e}")
 
         try:
             # 8. ORDEN DE COMPRA
-            data["orden_compra"] = self.extract_oc()
+            self.invoice_data.orden_compra = self.extract_oc()
         except Exception as e:
-            logger.error(f"Error extracting orden_compra: {e}")
+            logger.error(f"Error obteniendo orden_compra: {e}")
 
-        return data
+        self.invoice_data.qr_decoded = False
+        return self.invoice_data
 
 
 if __name__ == "__main__":
