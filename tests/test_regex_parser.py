@@ -1,4 +1,5 @@
-from parsers.regex_parser import RegexParser
+from parsers import RegexParser
+
 
 def test_extract_referencia():
     sample_text = "Factura A 0001-00001234\nOtra línea"
@@ -26,6 +27,7 @@ def test_extract_referencia():
     referencia = parser._extract_referencia()
     assert referencia == "00001-00000301"
 
+
 def test_extract_cuit():
     sample_text = "CUIT: 20-12345678-9\nOtra línea"
     parser = RegexParser(sample_text)
@@ -36,6 +38,7 @@ def test_extract_cuit():
     parser = RegexParser(without_dashes)
     cuit = parser._extract_cuit()
     assert cuit == "27123456789"
+
 
 def test_extract_fecha():
     sample_text = "Fecha: 15/08/2023\nOtra línea"
@@ -58,6 +61,7 @@ def test_extract_fecha():
     fecha = parser._extract_fecha()
     assert fecha == "2020-03-23"
 
+
 def test_extract_oc():
     sample_text = "Orden de Compra: 4612345678\nOtra línea"
     parser = RegexParser(sample_text)
@@ -69,6 +73,7 @@ def test_extract_oc():
     oc = parser.extract_oc()
     assert oc is None
 
+
 def test_extract_letra():
     sample_text = "Factura A 0001-00001234\nOtra línea"
     parser = RegexParser(sample_text)
@@ -79,6 +84,7 @@ def test_extract_letra():
     parser = RegexParser(no_letra)
     letra = parser.extract_letra()
     assert letra is None
+
 
 def test_extract_tipo_cmp():
     sample_text = "Tipo de Comprobante: 01\nOtra línea"
@@ -111,6 +117,7 @@ def test_extract_tipo_cmp():
     tipo_cmp = parser._extract_tipo_cmp()
     assert tipo_cmp is None
 
+
 def test_extract_importes():
     sample_text = """1 ARMF121C2 1 URANGA Man. HSS MACHO M.Fina 12.0 X 1.00 - C2 51,000.78 51,000.78
         2 ARMF181C2 1 URANGA Man. HSS MACHO M.Fina 18.0 X 1.00 - C2 89,645.57 89,645.57
@@ -130,14 +137,3 @@ def test_extract_importes():
     importes = parser.extract_importes()
     assert importes.importe_neto == 387873.61
     assert importes.importe_bruto == 470490.69
-
-# def test_extract_importes_check():
-#     sample_text = """ABC Subtotal 100000.00
-#         IVA 21% 21000.00
-#         PERCEPCION 30% 30000.00
-#         TOTAL $ 151000.00
-#     """
-#     parser = RegexParser(sample_text)
-#     importes = parser.extract_importes()
-#     assert importes.importe_neto == 100000.00
-#     assert importes.importe_bruto == 151000.00

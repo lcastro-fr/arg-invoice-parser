@@ -14,35 +14,34 @@ class ImportesResult(BaseModel):
 
 
 class InvoiceData(BaseModel):
-      referencia: str | None = None
-      fecha: str | None = None
-      cuit: str | None = None
-      importe_bruto: float | None = None
-      importe_neto: float | None = None
-      moneda: str = "ARS"
-      tipo_cmp: int | None = None
-      letra: str | None = None #!TODO Validar letra contra tipo de comprobante, o inferir desde tipo_cmp
-      orden_compra: str | None = None
-      qr_decoded: bool = Field(default=False)
-      check: bool = Field(default=False)
+    referencia: str | None = None
+    fecha: str | None = None
+    cuit: str | None = None
+    importe_bruto: float | None = None
+    importe_neto: float | None = None
+    moneda: str = "ARS"
+    tipo_cmp: int | None = None
+    letra: str | None = None  #!TODO Validate if letra can be inferred from tipo_cmp
+    orden_compra: str | None = None
+    qr_decoded: bool = Field(default=False)
+    check: bool = Field(default=False)
 
-      @model_validator(mode='after')
-      def validate_importes(self):
-          if self.importe_neto is None or self.importe_bruto is None:
-              self.check = False
-              return self
+    @model_validator(mode="after")
+    def validate_importes(self):
+        if self.importe_neto is None or self.importe_bruto is None:
+            self.check = False
+            return self
 
-          # importe neto no puede ser mayor al bruto
-          if self.importe_neto > self.importe_bruto:
-              self.check = False
-              return self
+        # net amount cannot be greater than gross amount
+        if self.importe_neto > self.importe_bruto:
+            self.check = False
+            return self
 
-          # importe neto + impuestos no puede ser mucho mayor al bruto
-          tolerancia = 1.32
-          if self.importe_neto * tolerancia < self.importe_bruto:
-              self.check = False
-              return self
+        # net amount + tax should be approximately equal to gross amount
+        tolerancia = 1.32
+        if self.importe_neto * tolerancia < self.importe_bruto:
+            self.check = False
+            return self
 
-          self.check = True
-          return self
-      
+        self.check = True
+        return self

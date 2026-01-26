@@ -1,13 +1,13 @@
-from parsers.qr_parser import QRParser
-from parsers.regex_parser import RegexParser
-from dtos.models import InvoiceData
+from parsers import RegexParser, QRParser
+from dtos import InvoiceData
+from io import BytesIO
 
-class Orchestrator:
-    def __init__(self, pdf_path: str, raw_text: str):
-        self.pdf_path = pdf_path
+
+class DataExtractionService:
+    def __init__(self, file_content: BytesIO, raw_text: str):
         self.raw_text = raw_text
         self.regex_parser = RegexParser(raw_text)
-        self.qr_parser = QRParser(pdf_path)
+        self.qr_parser = QRParser(file_content)
 
     def parse(self) -> InvoiceData | None:
         # Primero intento con QR
@@ -19,7 +19,7 @@ class Orchestrator:
             # Sin QR o invalido, usando regex.
             regex_data = self.regex_parser.extract_data()
             return regex_data
-        
+
     def _enrich_qr_with_regex(self, qr_data: InvoiceData) -> InvoiceData:
         # El importe neto no viene en el qr
         regex_importes = self.regex_parser.extract_importes()

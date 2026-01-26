@@ -12,3 +12,6 @@ wheels/
 # Facturas
 facturas/
 output/
+.claude
+.pytest_cache/
+.env

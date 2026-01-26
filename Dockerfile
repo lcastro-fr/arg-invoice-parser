@@ -22,20 +22,19 @@ WORKDIR /app
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
-COPY main.py __init__.py core.py run-batch.py ./
+COPY api/ ./api/
 COPY parsers/ ./parsers/
 COPY dtos/ ./dtos/
-COPY tests/ ./tests/
+COPY cli/ ./cli/
+COPY services/ ./services/
+COPY use_cases/ ./use_cases/
+COPY utils/ ./utils/
 
-# Install uv package manager
+# Sync dependencies and install
 RUN uv sync
 
-# Create directory for input PDFs
-RUN mkdir -p /app/invoices
+# Build the project
+RUN uv build
 
 # Set Python to run in unbuffered mode
 ENV PYTHONUNBUFFERED=1
-
-# Default command (can be overridden in docker-compose or at runtime)
-ENTRYPOINT ["uv","run"]
-CMD ["main.py", "--help"]

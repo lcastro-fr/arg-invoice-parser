@@ -1,19 +1,19 @@
 from urllib.parse import parse_qs, urlparse
 import base64
 import json
-import fitz
+import pymupdf
 from PIL import Image
 from pyzbar.pyzbar import decode
 import io
 import logging
-from dtos.models import InvoiceData
+from dtos import InvoiceData
 
 logger = logging.getLogger(__name__)
 
 
 class QRParser:
-    def __init__(self, pdf_path):
-        self.pdf_path = pdf_path
+    def __init__(self, file_content: io.BytesIO):
+        self.file_content = file_content
         self.invoice_data = InvoiceData()
 
     def _decode_afip_qr(self, url) -> dict | None:
@@ -52,7 +52,7 @@ class QRParser:
         Look for QR code.
         """
         try:
-            doc = fitz.open(self.pdf_path)
+            doc = pymupdf.open(stream=self.file_content)
             if not doc:
                 return None
         except Exception as e:
@@ -82,7 +82,7 @@ class QRParser:
                             afip_data = self._decode_afip_qr(qr_data)
                             if afip_data:
                                 return InvoiceData(
-                                    **afip_data, qr_decoded=True
+                                    **afip_data, qr_decoded=True, check=False
                                 )
         except Exception as e:
             logger.error(f"Error extracting QR codes: {e}")

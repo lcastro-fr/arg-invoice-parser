@@ -1,11 +1,11 @@
 name: arg-invoice-parser
 
 services:
-  invoice-parser:
+  invoice-parser-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: arg-invoice-parser
-    volumes:
-      - ./facturas:/app/invoices:ro
-      - ./output:/app/output
+    container_name: invoice-parser-api
+    command: ["uv", "run", "invoice-api", "--host", "${HOST}", "--port", "${PORT}", "--log-level", "${LOG_LEVEL}"]
+    ports:
+      - "${PORT}:${PORT}"
