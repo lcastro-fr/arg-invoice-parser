@@ -9,3 +9,10 @@ services:
     command: ["uv", "run", "invoice-api", "--host", "${HOST}", "--port", "${PORT}", "--log-level", "${LOG_LEVEL}"]
     ports:
       - "${PORT}:${PORT}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/health || exit 1"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

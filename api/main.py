@@ -6,6 +6,11 @@ from .dtos import InvoiceParseResponse
 app = FastAPI()
 
 
+@app.get("/health", status_code=200)
+async def health_check():
+    return {"status": "ok"}
+
+
 @app.post("/invoice/parse", status_code=200)
 async def parse_invoice(
     file: UploadFile = File(...),
