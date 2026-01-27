@@ -26,22 +26,37 @@ class InvoiceData(BaseModel):
     qr_decoded: bool = Field(default=False)
     check: bool = Field(default=False)
 
-    @model_validator(mode="after")
-    def validate_importes(self):
+    def _check_amounts(self):
         if self.importe_neto is None or self.importe_bruto is None:
-            self.check = False
-            return self
+            return False
 
         # net amount cannot be greater than gross amount
         if self.importe_neto > self.importe_bruto:
-            self.check = False
-            return self
+            return False
 
         # net amount + tax should be approximately equal to gross amount
         tolerancia = 1.32
         if self.importe_neto * tolerancia < self.importe_bruto:
-            self.check = False
-            return self
+            return False
 
-        self.check = True
+        return True
+
+    @model_validator(mode="after")
+    def validate_check(self):
+        if (
+            any(
+                field is None
+                for field in [
+                    self.referencia,
+                    self.fecha,
+                    self.cuit,
+                    self.importe_bruto,
+                    self.importe_neto,
+                    self.letra,
+                    self.tipo_cmp,
+                ]
+            )
+            or not self._check_amounts()
+        ):
+            self.check = False
         return self
