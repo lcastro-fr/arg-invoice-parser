@@ -81,9 +81,7 @@ class QRParser:
                         if "arca.gob.ar" in qr_data or "afip.gob.ar" in qr_data:
                             afip_data = self._decode_afip_qr(qr_data)
                             if afip_data:
-                                return InvoiceData(
-                                    **afip_data, qr_decoded=True, check=False
-                                )
+                                return InvoiceData(**afip_data, qr_decoded=True)
         except Exception as e:
             logger.error(f"Error extracting QR codes: {e}")
             return None
