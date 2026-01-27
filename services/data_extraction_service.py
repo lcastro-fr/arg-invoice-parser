@@ -4,9 +4,11 @@ from io import BytesIO
 
 
 class DataExtractionService:
-    def __init__(self, file_content: BytesIO, raw_text: str):
+    def __init__(
+        self, file_content: BytesIO, raw_text: str, own_cuit: str | None = None
+    ):
         self.raw_text = raw_text
-        self.regex_parser = RegexParser(raw_text)
+        self.regex_parser = RegexParser(raw_text, own_cuit=own_cuit)
         self.qr_parser = QRParser(file_content)
 
     def parse(self) -> InvoiceData | None:

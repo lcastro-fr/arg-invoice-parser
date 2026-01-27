@@ -1,5 +1,7 @@
 from parsers import RegexParser
 
+CUIT_FR = "30540080298"
+
 
 def test_extract_referencia():
     sample_text = "Factura A 0001-00001234\nOtra línea"
@@ -8,7 +10,7 @@ def test_extract_referencia():
     assert referencia == "0001-00001234"
 
     with_spaces = "Factura A  0002 - 00005678\nOtra línea"
-    parser = RegexParser(with_spaces)
+    parser = RegexParser(with_spaces, own_cuit=CUIT_FR)
     referencia = parser._extract_referencia()
     assert referencia == "0002-00005678"
 
@@ -23,77 +25,77 @@ def test_extract_referencia():
         Domicilio Comercial: Montes De Oca 6797 - Munro, Buenos Aires CUIT: 20161247953
         Ingresos Brutos: 20161247953
         """
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     referencia = parser._extract_referencia()
     assert referencia == "00001-00000301"
 
 
 def test_extract_cuit():
     sample_text = "CUIT: 20-12345678-9\nOtra línea"
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     cuit = parser._extract_cuit()
     assert cuit == "20123456789"
 
     without_dashes = "CUIT: 27123456789\nOtra línea"
-    parser = RegexParser(without_dashes)
+    parser = RegexParser(without_dashes, own_cuit=CUIT_FR)
     cuit = parser._extract_cuit()
     assert cuit == "27123456789"
 
 
 def test_extract_fecha():
     sample_text = "Fecha: 15/08/2023\nOtra línea"
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     fecha = parser._extract_fecha()
     assert fecha == "2023-08-15"
 
     with_dashes = "Fecha: 01-01-22\nOtra línea"
-    parser = RegexParser(with_dashes)
+    parser = RegexParser(with_dashes, own_cuit=CUIT_FR)
     fecha = parser._extract_fecha()
     assert fecha == "2022-01-01"
 
     with_dashes_full_year = "Fecha: 05-12-2021\nOtra línea"
-    parser = RegexParser(with_dashes_full_year)
+    parser = RegexParser(with_dashes_full_year, own_cuit=CUIT_FR)
     fecha = parser._extract_fecha()
     assert fecha == "2021-12-05"
 
     with_dots = "Fecha: 23.03.2020\nOtra línea"
-    parser = RegexParser(with_dots)
+    parser = RegexParser(with_dots, own_cuit=CUIT_FR)
     fecha = parser._extract_fecha()
     assert fecha == "2020-03-23"
 
 
 def test_extract_oc():
     sample_text = "Orden de Compra: 4612345678\nOtra línea"
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     oc = parser.extract_oc()
     assert oc == "4612345678"
 
     no_oc = "No hay orden de compra aquí.\nOtra línea"
-    parser = RegexParser(no_oc)
+    parser = RegexParser(no_oc, own_cuit=CUIT_FR)
     oc = parser.extract_oc()
     assert oc is None
 
 
 def test_extract_letra():
     sample_text = "Factura A 0001-00001234\nOtra línea"
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     letra = parser.extract_letra()
     assert letra == "A"
 
     no_letra = "Factura 0001-00001234\nOtra línea"
-    parser = RegexParser(no_letra)
+    parser = RegexParser(no_letra, own_cuit=CUIT_FR)
     letra = parser.extract_letra()
     assert letra is None
 
 
 def test_extract_tipo_cmp():
     sample_text = "Tipo de Comprobante: 01\nOtra línea"
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     tipo_cmp = parser._extract_tipo_cmp()
     assert tipo_cmp == 1
 
     another_type = "Tipo de Comprobante: 101\nOtra línea"
-    parser = RegexParser(another_type)
+    parser = RegexParser(another_type, own_cuit=CUIT_FR)
     tipo_cmp = parser._extract_tipo_cmp()
     assert tipo_cmp == 101
 
@@ -108,12 +110,12 @@ def test_extract_tipo_cmp():
         Código No. 201
         B1878IPL Quilmes C.U.I.T. : 30-50104769-0
         """
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     tipo_cmp = parser._extract_tipo_cmp()
     assert tipo_cmp == 201
 
     no_type = "No hay tipo de comprobante aquí.\nOtra línea"
-    parser = RegexParser(no_type)
+    parser = RegexParser(no_type, own_cuit=CUIT_FR)
     tipo_cmp = parser._extract_tipo_cmp()
     assert tipo_cmp is None
 
@@ -133,7 +135,7 @@ def test_extract_importes():
         Fecha Venc. CAE:07-07-25
         Comprobante Autorizado
         Cheques a la orden de Insumos DIB s.r.l. - NO SE ACEPTAN CHEQUES DE TERCEROS"""
-    parser = RegexParser(sample_text)
+    parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     importes = parser.extract_importes()
     assert importes.importe_neto == 387873.61
     assert importes.importe_bruto == 470490.69

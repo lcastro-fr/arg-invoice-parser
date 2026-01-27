@@ -20,10 +20,9 @@ class RegexParser:
     - Letter: A, B, C in the header (first 10 lines)
     """
 
-    CUIT_FR = "30540080298"
-
-    def __init__(self, raw_text):
+    def __init__(self, raw_text: str, own_cuit: str | None = None):
         self.text = raw_text
+        self.own_cuit = own_cuit
         self.invoice_data = InvoiceData()
         self.lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
 
@@ -83,7 +82,7 @@ class RegexParser:
             matches = re.findall(cuit_regex, line)
             for match in matches:
                 cuit = match.replace("-", "")
-                if cuit != self.CUIT_FR:
+                if cuit != self.own_cuit:
                     return cuit
         return None
 
