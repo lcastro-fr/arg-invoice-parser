@@ -78,7 +78,7 @@ class RegexParser:
 
     def _extract_cuit(self) -> str | None:
         cuit_regex = r"\b(?:20|23|27|30|33)(?:-?\d{8}-?\d)\b"
-        for line in self.lines:
+        for line in self.lines[:10]:  # Only search in the header (first 10 lines)
             matches = re.findall(cuit_regex, line)
             for match in matches:
                 cuit = match.replace("-", "")

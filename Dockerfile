@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
     # For PyMuPDF
     libmupdf-dev \
     mupdf-tools \
+    # Tesseract OCR engine
+    tesseract-ocr \
+    libtesseract-dev \
     # For building Python packages with C extensions
     build-essential \
     # General utilities

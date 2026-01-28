@@ -12,6 +12,7 @@ def main():
     parser.add_argument(
         "--pdf", type=str, required=True, help="Path to the invoice PDF file"
     )
+    parser.add_argument("--cuit", type=str, help="Own CUIT number", default=None)
     parser.add_argument("--debug", action="store_true", help="Debug")
     args = parser.parse_args()
 
@@ -25,7 +26,9 @@ def main():
         file_content = BytesIO(f.read())
 
     try:
-        invoice_data = ParseInvoiceUseCase.parse_invoice(file_content)
+        invoice_data = ParseInvoiceUseCase.parse_invoice(
+            file_content, own_cuit=args.cuit
+        )
         if invoice_data:
             logger.info(f"Extracted data: {invoice_data}")
         else:

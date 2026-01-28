@@ -2,7 +2,7 @@ from urllib.parse import parse_qs, urlparse
 import base64
 import json
 import pymupdf
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 from pyzbar.pyzbar import decode
 import io
 import logging
@@ -47,6 +47,43 @@ class QRParser:
             logger.error(f"Error decoding AFIP QR: {e}")
             return None
 
+    def _try_decode_with_enhancements(self, pil_image: Image.Image):
+        """Try to decode QR code with image enhancements."""
+        width, height = pil_image.size
+        if width < 60 or height < 60:
+            return None  # Too small to be a QR code
+
+        # Try original image with border added
+        try:
+            img_fast = ImageOps.expand(pil_image, border=20, fill="white")
+            decoded = decode(img_fast)
+            if decoded:
+                return decoded
+        except Exception:
+            pass
+
+        try:
+            # A. Resize: Zoom x2
+
+            img_heavy = img_fast.resize(
+                (width * 2, height * 2), Image.Resampling.LANCZOS
+            )
+
+            # B. Binarize: Convert to pure Black/White (High Contrast)
+            img_heavy = img_heavy.convert("L").point(
+                lambda x: 0 if x < 128 else 255, "1"
+            )
+
+            # C. Border: Add the quiet zone again (resizing eats margins)
+            img_heavy = ImageOps.expand(img_heavy, border=30, fill="white")
+
+            decoded = decode(img_heavy)
+            if decoded:
+                return decoded
+
+        except Exception:
+            pass
+
     def extract_and_parse(self) -> InvoiceData | None:
         """
         Look for QR code.
@@ -67,11 +104,13 @@ class QRParser:
                     continue
 
                 # List of QR founded
-                for img_index, img in enumerate(images):
+                for img_index, img in enumerate(
+                    reversed(images)
+                ):  # QR is usually at the end
                     base_image = doc.extract_image(img[0])
                     image_bytes = base_image["image"]
                     image = Image.open(io.BytesIO(image_bytes))
-                    qr_codes = decode(image)
+                    qr_codes = self._try_decode_with_enhancements(image)
 
                     if not qr_codes:
                         continue
