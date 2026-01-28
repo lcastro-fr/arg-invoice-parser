@@ -69,7 +69,7 @@ cd ocr-facturas
 uv sync
 
 # Install system dependencies (Ubuntu/Debian)
-sudo apt-get update && apt-get install -y libzbar0 poppler-utils libmupdf-dev
+sudo apt-get update && apt-get install -y libzbar0 poppler-utils libmupdf-dev tesseract-ocr libtesseract-dev
 
 ```
 #### Optional: build the project
