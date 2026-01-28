@@ -45,11 +45,21 @@ class RegexParser:
             return 0.0
 
     def _format_referencia(self, referencia):
+        num = None
+        pto_venta = None
         if "-" not in referencia:
             num = referencia[:-8]
             pto_venta = referencia[len(referencia) - 8 :]
-            return f"{num}-{pto_venta}"
-        return referencia
+        else:
+            num, pto_venta = referencia.split("-")
+
+        try:
+            num = int(num)
+            pto_venta = int(pto_venta)
+        except ValueError:
+            return None
+
+        return f"{str(num).rjust(4, '0')}-{str(pto_venta).rjust(8, '0')}"
 
     def _extract_referencia(self) -> str | None:
         # Should be in the header
@@ -65,7 +75,8 @@ class RegexParser:
         pto_venta_matches = re.findall(pto_venta_regex, header_text)
         numero_matches = re.findall(numero_regex, header_text)
         if pto_venta_matches and numero_matches:
-            return f"{pto_venta_matches[0]}-{numero_matches[0]}"
+            ref = f"{pto_venta_matches[0]}-{numero_matches[0]}"
+            return self._format_referencia(ref)
 
         return None
 

@@ -27,7 +27,12 @@ def test_extract_referencia():
         """
     parser = RegexParser(sample_text, own_cuit=CUIT_FR)
     referencia = parser._extract_referencia()
-    assert referencia == "00001-00000301"
+    assert referencia == "0001-00000301"
+
+    extra_zero_format = "Factura A  00002 - 00005678\nOtra línea"
+    parser = RegexParser(extra_zero_format, own_cuit=CUIT_FR)
+    referencia = parser._extract_referencia()
+    assert referencia == "0002-00005678"
 
 
 def test_extract_cuit():
