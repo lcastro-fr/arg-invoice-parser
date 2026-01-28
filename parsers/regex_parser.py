@@ -117,28 +117,36 @@ class RegexParser:
         """Extract amounts with comma and dot as separators.
         - The gross amount should be the largest of all.
         - The net amount should be immediately below the gross.
+        - Consider only the last 8 amounts found in the document.
         """
-        found_amounts = []
+        found_amounts_with_position = []
+
         regex_arg = r"\b(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}\b"
-        matches_arg = re.findall(regex_arg, self.text)
+        matches_arg = re.finditer(regex_arg, self.text)
 
         for m in matches_arg:
-            val_str = m.replace(".", "").replace(",", ".")
+            val_str = m.group().replace(".", "").replace(",", ".")
             try:
                 val = float(val_str)
-                found_amounts.append(val)
+                found_amounts_with_position.append((val, m.start()))
             except ValueError:
                 continue
 
         regex_us = r"\b(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\b"
-        matches_us = re.findall(regex_us, self.text)
+        matches_us = re.finditer(regex_us, self.text)
         for m in matches_us:
-            val_str = m.replace(",", "")
+            val_str = m.group().replace(",", "")
             try:
                 val = float(val_str)
-                found_amounts.append(val)
+                found_amounts_with_position.append((val, m.start()))
             except ValueError:
                 continue
+
+        # Sort by position descending
+        found_amounts_with_position.sort(key=lambda x: x[1], reverse=True)
+
+        # Keep the last 8 found amounts
+        found_amounts = [amt for amt, pos in found_amounts_with_position[:8]]
 
         # Remove duplicates and very close amounts
         unique_amounts = []
