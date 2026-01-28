@@ -63,6 +63,24 @@ def test_extract_fecha():
     fecha = parser._extract_fecha()
     assert fecha == "2020-03-23"
 
+    with_spaces = "Fecha: 23 03 2020\nOtra línea"
+    parser = RegexParser(with_spaces, own_cuit=CUIT_FR)
+    fecha = parser._extract_fecha()
+    assert fecha == "2020-03-23"
+
+    valid_range = """
+    0002-00002117
+    A
+    C.U.I.T.: 30-60597690-1
+    DE ALBERTO Y DANIEL CRIPPA y CIA S.R.L. 001 Ing.Brutos : 665651-10
+    FABRICA ADMINISTRACION Y VENTAS Inicio de Actividades 12/09/1985
+    Pje. Cristóbal M. Hicken 2817/19
+    (1439) C.A.B.A. - Tel.: (011)-4601-1184 Fecha: 05/08/2025
+    """
+    parser = RegexParser(valid_range, own_cuit=CUIT_FR)
+    fecha = parser._extract_fecha()
+    assert fecha == "2025-08-05"
+
 
 def test_extract_oc():
     sample_text = "Orden de Compra: 4612345678\nOtra línea"

@@ -20,7 +20,9 @@ class RegexParser:
     - Letter: A, B, C in the header (first 10 lines)
     """
 
-    def __init__(self, raw_text: str, own_cuit: str | None = None):
+    def __init__(
+        self, raw_text: str, own_cuit: str | None = None, verbose: bool = False
+    ):
         self.text = raw_text
         self.own_cuit = own_cuit
         self.invoice_data = InvoiceData()
@@ -42,13 +44,20 @@ class RegexParser:
         except ValueError:
             return 0.0
 
+    def _format_referencia(self, referencia):
+        if "-" not in referencia:
+            num = referencia[:-8]
+            pto_venta = referencia[len(referencia) - 8 :]
+            return f"{num}-{pto_venta}"
+        return referencia
+
     def _extract_referencia(self) -> str | None:
         # Should be in the header
-        ref_regex = r"\b\d{4,5}\s?-\s?\d{8}\b"
+        ref_regex = r"\b\d{4,5}\s?-?\s?\d{8}\b"
         header_text = " ".join(self.lines[:10])
         ref_matches = re.findall(ref_regex, header_text)
         if ref_matches:
-            return ref_matches[0].replace(" ", "")
+            return self._format_referencia(ref_matches[0].replace(" ", ""))
 
         # Try to find pto_venta and numero separately
         pto_venta_regex = r"(?<![.\d/-])\d{4,5}(?![.\d/-])"
@@ -61,20 +70,27 @@ class RegexParser:
         return None
 
     def _extract_fecha(self) -> str | None:
-        date_regex = r"\b(\d{1,2}[\\/.-]\d{1,2}[\\/.-]\d{2,4})\b"
+        date_regex = r"\b(\d{1,2}([-\.\/\s])\d{1,2}\2\d{2,4})\b"
         date_matches = re.findall(date_regex, self.text)
         if date_matches:
             # The issue date is the first one in the document
-            try:
-                date_str = date_matches[0].replace("-", "/").replace(".", "/")
-                split_dates = date_str.split("/")
-                day, month, year = split_dates
-                if len(year) == 2:
-                    year = "20" + year
-                dt_obj = datetime(int(year), int(month), int(day))
-                return dt_obj.strftime("%Y-%m-%d")
-            except Exception:
-                return date_matches[0]  # Fallback if parsing fails
+            for full_date, separator in date_matches:
+                try:
+                    date_str = full_date.replace(separator, "/")
+                    split_dates = date_str.split("/")
+                    day, month, year = split_dates
+                    if len(year) == 2:
+                        year = "20" + year
+                    dt_obj = datetime(int(year), int(month), int(day))
+
+                    current_year = datetime.now().year
+                    if not current_year - 10 <= dt_obj.year <= current_year + 1:
+                        continue  # Skip unrealistic years
+
+                    # Return the first valid date found
+                    return dt_obj.strftime("%Y-%m-%d")
+                except Exception:
+                    pass
 
     def _extract_cuit(self) -> str | None:
         cuit_regex = r"\b(?:20|23|27|30|33)(?:-?\d{8}-?\d)\b"

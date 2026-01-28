@@ -1,18 +1,22 @@
 from services import OCRService, DataExtractionService
 from io import BytesIO
 from dtos import InvoiceData
+import logging
 
 
 class ParseInvoiceUseCase:
     @staticmethod
     def parse_invoice(
-        file_content: BytesIO, own_cuit: str | None = None
+        file_content: BytesIO, own_cuit: str | None = None, verbose: bool = False
     ) -> InvoiceData | None:
         # Extract text via OCR
         ocr_service = OCRService(file_content)
         raw_text = ocr_service.extract_digital_text()
         if not raw_text:
             return None
+
+        if verbose:
+            logging.info(f"Extracted digital text from PDF: {raw_text}")
 
         # Extract data via DataExtractionService
         data_extraction_service = DataExtractionService(
