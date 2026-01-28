@@ -117,7 +117,7 @@ class RegexParser:
         """Extract amounts with comma and dot as separators.
         - The gross amount should be the largest of all.
         - The net amount should be immediately below the gross.
-        - Consider only the last 8 amounts found in the document.
+        - Consider only the last 10 amounts found in the document.
         """
         found_amounts_with_position = []
 
@@ -145,8 +145,10 @@ class RegexParser:
         # Sort by position descending
         found_amounts_with_position.sort(key=lambda x: x[1], reverse=True)
 
-        # Keep the last 8 found amounts
-        found_amounts = [amt for amt, pos in found_amounts_with_position[:8]]
+        # Keep the last 10 found amounts
+        found_amounts = [
+            amt for amt, pos in found_amounts_with_position[:10] if amt > 0.0
+        ]
 
         # Remove duplicates and very close amounts
         unique_amounts = []
