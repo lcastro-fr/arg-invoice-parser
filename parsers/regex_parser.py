@@ -1,8 +1,9 @@
-import re
-from datetime import datetime
-import statistics
 import logging
-from dtos import InvoiceData, ImportesResult, ImportesDebugInfo
+import re
+import statistics
+from datetime import datetime
+
+from dtos import ImportesDebugInfo, ImportesResult, InvoiceData
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class RegexParser:
                     return cuit
         return None
 
-    def extract_importes(self) -> ImportesResult:
+    def extract_importes(self, gross_amount: float | None = None) -> ImportesResult:
         """Extract amounts with comma and dot as separators.
         - The gross amount should be the largest of all.
         - The net amount should be immediately below the gross.
@@ -121,7 +122,7 @@ class RegexParser:
         """
         found_amounts_with_position = []
 
-        regex_arg = r"\b(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}\b"
+        regex_arg = r"\b(?:\d{1,3}(?:\.\d{3})+|\d+),\d{1,2}\b"
         matches_arg = re.finditer(regex_arg, self.text)
 
         for m in matches_arg:
@@ -132,7 +133,7 @@ class RegexParser:
             except ValueError:
                 continue
 
-        regex_us = r"\b(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\b"
+        regex_us = r"\b(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{1,2}\b"
         matches_us = re.finditer(regex_us, self.text)
         for m in matches_us:
             val_str = m.group().replace(",", "")
@@ -144,6 +145,14 @@ class RegexParser:
 
         # Sort by position descending
         found_amounts_with_position.sort(key=lambda x: x[1], reverse=True)
+
+        # If gross amount is provided, use it as the largest amount and filter out greater values
+        if gross_amount is not None:
+            found_amounts_with_position = [
+                (val, pos)
+                for val, pos in found_amounts_with_position
+                if val <= gross_amount
+            ]
 
         # Keep the last 10 found amounts
         found_amounts = [
@@ -177,7 +186,8 @@ class RegexParser:
             result.debug.median = median
             result.debug.filtered_candidatos = unique_amounts
 
-        result.importe_bruto = unique_amounts[0]  # The largest is the gross amount
+        if not gross_amount:
+            result.importe_bruto = unique_amounts[0]  # The largest is the gross amount
 
         if len(unique_amounts) > 1:
             result.importe_neto = unique_amounts[1]

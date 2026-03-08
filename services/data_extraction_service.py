@@ -1,6 +1,7 @@
-from parsers import RegexParser, QRParser
-from dtos import InvoiceData
 from io import BytesIO
+
+from dtos import InvoiceData
+from parsers import QRParser, RegexParser
 
 
 class DataExtractionService:
@@ -24,7 +25,9 @@ class DataExtractionService:
 
     def _enrich_qr_with_regex(self, qr_data: InvoiceData) -> InvoiceData:
         # El importe neto no viene en el qr
-        regex_importes = self.regex_parser.extract_importes()
+        regex_importes = self.regex_parser.extract_importes(
+            gross_amount=qr_data.importe_bruto
+        )
         qr_data.importe_neto = regex_importes.importe_neto
 
         # La letra no siempre es la correcta.
