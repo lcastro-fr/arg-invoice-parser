@@ -143,15 +143,26 @@ class RegexParser:
             except ValueError:
                 continue
 
+        # Fallback if not separators are used, e.g. 1000 or 1000,00
+        regex_simple = r"\b\d{4,}[,\.]\d{1,2}\b"
+        matches_simple = re.finditer(regex_simple, self.text)
+        for m in matches_simple:
+            val_str = m.group().replace(",", ".")
+            try:
+                val = float(val_str)
+                found_amounts_with_position.append((val, m.start()))
+            except ValueError:
+                continue
+
         # Sort by position descending
         found_amounts_with_position.sort(key=lambda x: x[1], reverse=True)
 
-        # If gross amount is provided, use it as the largest amount and filter out greater values
+        # If gross amount is provided, use it as the largest amount and filter out greater values. Filter out values that are less than 50%.
         if gross_amount is not None:
             found_amounts_with_position = [
                 (val, pos)
                 for val, pos in found_amounts_with_position
-                if val <= gross_amount
+                if val <= gross_amount and val >= (gross_amount * 0.5)
             ]
 
         # Keep the last 10 found amounts
