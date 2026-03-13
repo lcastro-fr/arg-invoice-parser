@@ -162,7 +162,9 @@ class RegexParser:
             found_amounts_with_position = [
                 (val, pos)
                 for val, pos in found_amounts_with_position
-                if val <= gross_amount and val >= (gross_amount * 0.5)
+                if val <= gross_amount
+                and val >= (gross_amount * 0.5)
+                and val <= (gross_amount * 0.95)
             ]
 
         # Keep the last 10 found amounts
