@@ -29,7 +29,10 @@ def main():
         file_content = BytesIO(f.read())
 
     try:
-        invoice_data = ParseInvoiceUseCase.parse_invoice(
+        use_case = ParseInvoiceUseCase(
+            invoices_wh_port=ParseInvoiceUseCase._create_adapter_from_env()
+        )
+        invoice_data = use_case.parse_invoice(
             file_content, own_cuit=args.cuit, verbose=args.verbose
         )
         if invoice_data:

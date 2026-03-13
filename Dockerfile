@@ -32,6 +32,7 @@ COPY cli/ ./cli/
 COPY services/ ./services/
 COPY use_cases/ ./use_cases/
 COPY utils/ ./utils/
+COPY infrastructure/ ./infrastructure/
 
 # Sync dependencies and install
 RUN uv sync

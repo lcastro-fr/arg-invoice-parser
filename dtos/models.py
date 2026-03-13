@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 class ImportesDebugInfo(BaseModel):
@@ -24,6 +24,7 @@ class InvoiceData(BaseModel):
     letra: str | None = None  #!TODO Validate if letra can be inferred from tipo_cmp
     orden_compra: str | None = None
     qr_decoded: bool = Field(default=False)
+    db_retrieved: bool = Field(default=False)
 
     def _check_amounts(self):
         if self.importe_neto is None or self.importe_bruto is None:

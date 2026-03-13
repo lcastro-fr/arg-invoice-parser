@@ -62,7 +62,7 @@ class RegexParser:
 
         return f"{str(num).rjust(4, '0')}-{str(pto_venta).rjust(8, '0')}"
 
-    def _extract_referencia(self) -> str | None:
+    def extract_referencia(self) -> str | None:
         # Should be in the header
         ref_regex = r"\b\d{4,5}\s?-?\s?\d{8}\b"
         header_text = " ".join(self.lines[:10])
@@ -104,7 +104,7 @@ class RegexParser:
                 except Exception:
                     pass
 
-    def _extract_cuit(self) -> str | None:
+    def extract_cuit(self) -> str | None:
         cuit_regex = r"\b(?:20|23|27|30|33)(?:-?\d{8}-?\d)\b"
         for line in self.lines[:10]:  # Only search in the header (first 10 lines)
             matches = re.findall(cuit_regex, line)
@@ -256,7 +256,7 @@ class RegexParser:
     def extract_data(self) -> InvoiceData:
         try:
             # 1. REFERENCE (format 0000-00000000)
-            self.invoice_data.referencia = self._extract_referencia()
+            self.invoice_data.referencia = self.extract_referencia()
         except Exception as e:
             logger.error(f"Error obtaining reference: {e}")
 
@@ -268,7 +268,7 @@ class RegexParser:
 
         try:
             # 3. CUIT (XX-XXXXXXXX-X o XXXXXXXXXXX)
-            self.invoice_data.cuit = self._extract_cuit()
+            self.invoice_data.cuit = self.extract_cuit()
         except Exception as e:
             logger.error(f"Error obtaining cuit: {e}")
 

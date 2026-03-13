@@ -24,9 +24,10 @@ def _process_batch_files(pdf_paths: list, own_cuit: str | None, logger):
             file_content = BytesIO(f.read())
 
         current_time = time.time()
-        invoice_data = ParseInvoiceUseCase.parse_invoice(
-            file_content, own_cuit=own_cuit
+        use_case = ParseInvoiceUseCase(
+            invoices_wh_port=ParseInvoiceUseCase._create_adapter_from_env()
         )
+        invoice_data = use_case.parse_invoice(file_content, own_cuit=own_cuit)
         if invoice_data:
             data_dict = invoice_data.model_dump()
             data_dict["pdf_path"] = pdf_path

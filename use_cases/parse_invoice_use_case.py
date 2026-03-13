@@ -1,13 +1,31 @@
-from services import OCRService, DataExtractionService
-from io import BytesIO
-from dtos import InvoiceData
 import logging
+from io import BytesIO
+
+from dtos import InvoiceData
+from infrastructure.ports.invoices_wh_port import InvoicesWHPort
+from services import DataExtractionService, OCRService
+
+logger = logging.getLogger(__name__)
 
 
 class ParseInvoiceUseCase:
+    def __init__(self, invoices_wh_port: InvoicesWHPort | None = None):
+        self.invoices_wh_port = invoices_wh_port
+
     @staticmethod
+    def _create_adapter_from_env() -> InvoicesWHPort | None:
+        try:
+            from infrastructure.adapters.invoices_wh_adaptar import InvoicesWHAdapter
+            from infrastructure.config.database_config import DATABASE_URL
+
+            if DATABASE_URL:
+                return InvoicesWHAdapter(DATABASE_URL)
+        except Exception as e:
+            logger.warning(f"Failed to initialize DB adapter: {e}")
+        return None
+
     def parse_invoice(
-        file_content: BytesIO, own_cuit: str | None = None, verbose: bool = False
+        self, file_content: BytesIO, own_cuit: str | None = None, verbose: bool = False
     ) -> InvoiceData | None:
         # Extract text via OCR
         ocr_service = OCRService(file_content)
@@ -20,7 +38,10 @@ class ParseInvoiceUseCase:
 
         # Extract data via DataExtractionService
         data_extraction_service = DataExtractionService(
-            file_content=file_content, raw_text=raw_text, own_cuit=own_cuit
+            file_content=file_content,
+            raw_text=raw_text,
+            own_cuit=own_cuit,
+            invoices_wh_port=self.invoices_wh_port,
         )
         invoice_data = data_extraction_service.parse()
         if not invoice_data:
