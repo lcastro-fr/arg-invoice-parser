@@ -29,7 +29,6 @@ COPY api/ ./api/
 COPY parsers/ ./parsers/
 COPY dtos/ ./dtos/
 COPY cli/ ./cli/
-COPY services/ ./services/
 COPY use_cases/ ./use_cases/
 COPY utils/ ./utils/
 COPY infrastructure/ ./infrastructure/

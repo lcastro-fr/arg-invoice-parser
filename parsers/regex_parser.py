@@ -26,7 +26,6 @@ class RegexParser:
     ):
         self.text = raw_text
         self.own_cuit = own_cuit
-        self.invoice_data = InvoiceData()
         self.lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
 
     def _parse_arg_float(self, num_str):
@@ -81,7 +80,7 @@ class RegexParser:
 
         return None
 
-    def _extract_fecha(self) -> str | None:
+    def extract_fecha(self) -> str | None:
         date_regex = r"\b(\d{1,2}([-\.\/\s])\d{1,2}\2\d{2,4})\b"
         date_matches = re.findall(date_regex, self.text)
         if date_matches:
@@ -209,7 +208,7 @@ class RegexParser:
 
         return result
 
-    def _extract_tipo_cmp(self):
+    def extract_tipo_cmp(self):
         header_text = " ".join(self.lines[:10])
         cod_regex = r"(?<![.\d/-])\d{1,3}(?![.\d/-])"
         cod_matches = re.findall(cod_regex, header_text)
@@ -254,44 +253,43 @@ class RegexParser:
         return None
 
     def extract_data(self) -> InvoiceData:
+        invoice_data = InvoiceData()
+
         try:
-            # 1. REFERENCE (format 0000-00000000)
-            self.invoice_data.referencia = self.extract_referencia()
+            invoice_data.referencia = self.extract_referencia()
         except Exception as e:
             logger.error(f"Error obtaining reference: {e}")
 
         try:
-            # 2. DATE (dd/mm/yyyy or dd-mm-yy)
-            self.invoice_data.fecha = self._extract_fecha()
+            invoice_data.fecha = self.extract_fecha()
         except Exception as e:
             logger.error(f"Error obtaining date: {e}")
 
         try:
-            # 3. CUIT (XX-XXXXXXXX-X o XXXXXXXXXXX)
-            self.invoice_data.cuit = self.extract_cuit()
+            invoice_data.cuit = self.extract_cuit()
         except Exception as e:
             logger.error(f"Error obtaining cuit: {e}")
 
         try:
-            # 4 & 5. AMOUNTS (Gross and Net)
             importes = self.extract_importes()
-            self.invoice_data.importe_bruto = importes.importe_bruto
-            self.invoice_data.importe_neto = importes.importe_neto
+            invoice_data.importe_bruto = importes.importe_bruto
+            invoice_data.importe_neto = importes.importe_neto
         except Exception as e:
             logger.error(f"Error obtaining amounts: {e}")
 
         try:
-            # 6 & 7. HEADER (First 10 lines)
-            self.invoice_data.tipo_cmp = self._extract_tipo_cmp()
-            self.invoice_data.letra = self.extract_letra()
+            invoice_data.tipo_cmp = self.extract_tipo_cmp()
         except Exception as e:
-            logger.error(f"Error obtaining tipoCmp/letra: {e}")
+            logger.error(f"Error obtaining tipoCmp: {e}")
 
         try:
-            # 8. PURCHASE ORDER
-            self.invoice_data.orden_compra = self.extract_oc()
+            invoice_data.letra = self.extract_letra()
+        except Exception as e:
+            logger.error(f"Error obtaining letra: {e}")
+
+        try:
+            invoice_data.orden_compra = self.extract_oc()
         except Exception as e:
             logger.error(f"Error obtaining purchase order: {e}")
 
-        self.invoice_data.qr_decoded = False
-        return self.invoice_data
+        return invoice_data
