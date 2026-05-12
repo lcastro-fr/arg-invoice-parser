@@ -1,13 +1,14 @@
+from typing import TYPE_CHECKING
+
 import pdfplumber
 import pytesseract
 from pdf2image import convert_from_bytes
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from io import BytesIO
 
 
-class OCRService:
+class OCRParser:
     def __init__(self, file_content: "BytesIO"):
         self.file_content = file_content
 

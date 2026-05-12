@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 class QRParser:
     def __init__(self, file_content: io.BytesIO):
         self.file_content = file_content
-        self.invoice_data = InvoiceData()
 
     def _decode_afip_qr(self, url) -> dict | None:
         try:
@@ -124,3 +123,5 @@ class QRParser:
         except Exception as e:
             logger.error(f"Error extracting QR codes: {e}")
             return None
+        finally:
+            doc.close()
